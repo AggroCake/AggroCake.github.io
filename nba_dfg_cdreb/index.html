@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <title>DFG與CONTESTED DREB%比較</title>
     <meta charset="utf-8">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.bundle.js"></script>
     <script src="https://code.jquery.com/jquery-3.2.1.js"></script>
   </head>
   <body>
+    <h1>NBA 17-18球季 DFG與CONTESTED DREB%比較</h1>
     <p>狀態：<span id="log"></span></p>
     <hr>
       <h3>說明</h3>
@@ -119,7 +121,7 @@
               img = new Image();
           img.src = `https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/${player.teamid}/2017/260x190/${player.id}.png`;
           img.onload = () => {
-            img.width = 80;
+            img.width = 100;
             img.height = img.naturalHeight * img.width / img.naturalWidth;
             labels.push(player.name);
             datasets.push({
