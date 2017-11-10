@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.bundle.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+  </head>
+  <body>
+    <p>狀態：<span id="log"></span></p>
+    <hr>
+      <h3>說明</h3>
+      <ul>
+        <li>資料取自stats.nba.com，系統不保證能夠穩定使用</li>
+        <li>球員篩選條件
+          <ul>
+            <li>比賽場次：大於等於 比賽場次最多球員之2/3場次<span id="maxGamePlayedText"></span></li>
+            <li>平均上場時間：大於等於 20分鐘</li>
+            <li>位置：C、C-F、F-C</li>
+          </ul>
+        </li>
+      </ul>
+    <hr>
+    <canvas id="chart"></canvas>
+    <script>
+      let log = document.getElementById('log'),
+          data0 = [],
+          data1 = [],
+          data2 = [],
+          apiFinishedCount = 0,
+          maxGamePlayed = 0;
+
+      function makeRequest(target, url) {
+        $.ajax({
+          url: url,
+          type: 'GET',
+          dataType: 'jsonp',
+          cache: false,
+          success: (response) => {
+            target.push(response);
+            apiFinishedCount++;
+          }
+        });
+      }
+
+      function preprocess() {
+        let tempData1 = [],
+            playerIdToIndex = [];
+
+        data1 = data1[0].resultSets[0].rowSet;
+        data2 = data2[0].resultSets[0].rowSet;
+
+        for(let i = 0; i < data2.length; i++) {
+          let player = data2[i],
+              id = player[0],
+              name = player[1],
+              teamid = player[2],
+              min = player[7],
+              dreb = player[17],
+              cdreb = player[18];
+          playerIdToIndex[id] = tempData1.length;
+          tempData1.push({
+            id: id,
+            name: name,
+            teamid: teamid,
+            min: min,
+            dreb: dreb,
+            cdreb: cdreb,
+            cdrebr: Math.round(cdreb / dreb * 1000) / 1000
+          });
+        }
+
+        for(let i = 0; i < data1.length; i++) {
+          let player = data1[i],
+          id = player[0],
+          index = playerIdToIndex[id],
+          pos = player[4],
+          gp = player[6],
+          dfg = player[11];
+          tempData1[index].pos = pos;
+          tempData1[index].gp = gp;
+          tempData1[index].dfg = dfg;
+          if(gp > maxGamePlayed)
+            maxGamePlayed = gp;
+        }
+
+        for(let i = 0; i < tempData1.length; i++) {
+          let player = tempData1[i];
+          if(player.gp >= Math.floor(maxGamePlayed * 2 / 3) && player.min >= 20 && (player.pos == "C" || player.pos == "C-F" || player.pos == "F-C"))
+            data0.push(player);
+        }
+        console.log(data0);
+      }
+
+      window.onload = () => {
+        log.textContent = '從stats.nba.com讀取數據中...';
+
+        //for DFG%
+        makeRequest(data1, 'https://stats.nba.com/stats/leaguedashptdefend?College=&Conference=&Country=&DateFrom=&DateTo=&DefenseCategory=Overall&Division=&DraftPick=&DraftYear=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&Season=2017-18&SeasonSegment=&SeasonType=Regular+Season&StarterBench=&TeamID=0&VsConference=&VsDivision=&Weight=');
+        //for CDREB%
+        makeRequest(data2, 'https://stats.nba.com/stats/leaguedashptstats?College=&Conference=&Country=&DateFrom=&DateTo=&Division=&DraftPick=&DraftYear=&GameScope=&Height=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PerMode=PerGame&PlayerExperience=&PlayerOrTeam=Player&PlayerPosition=&PtMeasureType=Rebounding&Season=2017-18&SeasonSegment=&SeasonType=Regular+Season&StarterBench=&TeamID=0&VsConference=&VsDivision=&Weight=');
+
+        let timer = setInterval(() => {
+          if(apiFinishedCount == 2) {
+            clearInterval(timer);
+            log.textContent = '讀取完成，處理資料中...';
+            preprocess();
+            drawChart();
+          }
+        }, 1000);
+      };
+
+      function drawChart() {
+        let datasets = [],
+            labels = [],
+            loadedImgCount = 0;
+
+        for(let i = 0; i < data0.length; i++) {
+          let player = data0[i],
+              img = new Image();
+          img.src = `https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/${player.teamid}/2017/260x190/${player.id}.png`;
+          img.onload = () => {
+            img.width = 80;
+            img.height = img.naturalHeight * img.width / img.naturalWidth;
+            labels.push(player.name);
+            datasets.push({
+              data: [{
+                x: player.dfg,
+                y: player.cdrebr
+              }],
+              pointStyle: img
+            });
+            loadedImgCount++;
+          };
+        }
+
+        let timer = setInterval(() => {
+          if(loadedImgCount == data0.length) {
+            clearInterval(timer);
+            Chart.defaults.global.elements.point.radius = 30;
+            Chart.defaults.global.elements.point.hoverRadius = 30;
+            new Chart(document.getElementById('chart').getContext('2d'), {
+              type: 'scatter',
+              data: {
+                labels: labels,
+                datasets: datasets
+              },
+              options: {
+                legend: {
+                  display:false
+                },
+                scales: {
+                  xAxes: [{
+                    scaleLabel: {
+                      display: true,
+                      labelString: 'DFG%'
+                    }
+                  }],
+                  yAxes: [{
+                    scaleLabel: {
+                      display: true,
+                      labelString: 'CONTESTED DREB%'
+                    }
+                  }]
+                },
+                tooltips: {
+                  callbacks: {
+                    label: function(tooltipItem, data) {
+                      let label = data.labels[tooltipItem.datasetIndex];
+                      return label + ': (' + tooltipItem.xLabel + ', ' + tooltipItem.yLabel + ')';
+                    }
+                  }
+                }
+              }
+            });
+            log.textContent = '完成！';
+            document.getElementById('maxGamePlayedText').textContent = `（${Math.floor(maxGamePlayed * 2 / 3)}場）`;
+          }
+        }, 1000);
+      }
+    </script>
+  </body>
+</html>
