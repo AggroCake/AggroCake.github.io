@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
   <head>
@@ -7,21 +8,21 @@
     <script src="https://code.jquery.com/jquery-3.2.1.js"></script>
   </head>
   <body>
-    <h1>NBA 17-18球季 DFG與CONTESTED DREB%比較</h1>
-    <p>狀態：<span id="log"></span></p>
+    <h1>NBA 17-18球季 DFG%與CONTESTED DREB%比較</h1>
     <hr>
-      <h3>說明</h3>
-      <ul>
-        <li>資料取自stats.nba.com，系統不保證能夠穩定使用</li>
-        <li>球員篩選條件
-          <ul>
-            <li>比賽場次：大於等於 比賽場次最多球員之2/3場次<span id="maxGamePlayedText"></span></li>
-            <li>平均上場時間：大於等於 20分鐘</li>
-            <li>位置：C、C-F、F-C</li>
-          </ul>
-        </li>
-      </ul>
+    <ul>
+      <li>資料取自stats.nba.com，如果官方改了什麼，這個可能就不能用惹</li>
+      <li>球員篩選條件
+        <ul>
+          <li>比賽場次：大於等於 比賽場次最多球員之2/3場次<span id="maxGamePlayedText"></span></li>
+          <li>平均上場時間：大於等於 20分鐘</li>
+          <li>位置：C、C-F、F-C</li>
+        </ul>
+      </li>
+      <li>Code: <a href="https://github.com/AggroCake/AggroCake.github.io">GitHub</a></li>
+    </ul>
     <hr>
+    <div id="log"></div>
     <canvas id="chart"></canvas>
     <script>
       let log = document.getElementById('log'),
@@ -94,7 +95,7 @@
       }
 
       window.onload = () => {
-        log.textContent = '從stats.nba.com讀取數據中...';
+        log.textContent = '從stats.nba.com讀取數據中... 請稍候';
 
         //for DFG%
         makeRequest(data1, 'https://stats.nba.com/stats/leaguedashptdefend?College=&Conference=&Country=&DateFrom=&DateTo=&DefenseCategory=Overall&Division=&DraftPick=&DraftYear=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&Season=2017-18&SeasonSegment=&SeasonType=Regular+Season&StarterBench=&TeamID=0&VsConference=&VsDivision=&Weight=');
@@ -140,6 +141,8 @@
             clearInterval(timer);
             Chart.defaults.global.elements.point.radius = 30;
             Chart.defaults.global.elements.point.hoverRadius = 30;
+            Chart.defaults.global.tooltips.yPadding = 8;
+            Chart.defaults.global.tooltips.yPadding = 8;
             new Chart(document.getElementById('chart').getContext('2d'), {
               type: 'scatter',
               data: {
@@ -165,16 +168,19 @@
                   }]
                 },
                 tooltips: {
+                  custom: function(tooltip) {
+                    tooltip.displayColors = false;
+                  },
                   callbacks: {
                     label: function(tooltipItem, data) {
                       let label = data.labels[tooltipItem.datasetIndex];
-                      return label + ': (' + tooltipItem.xLabel + ', ' + tooltipItem.yLabel + ')';
+                      return [label, `${tooltipItem.xLabel}, ${tooltipItem.yLabel}`];
                     }
                   }
                 }
               }
             });
-            log.textContent = '完成！';
+            log.style.display = 'none';
             document.getElementById('maxGamePlayedText').textContent = `（${Math.floor(maxGamePlayed * 2 / 3)}場）`;
           }
         }, 1000);
